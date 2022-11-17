@@ -1,6 +1,8 @@
 package types
 
-import "time"
+import (
+	"time"
+)
 
 type Category struct {
 	ID          int64      `json:"id"`
