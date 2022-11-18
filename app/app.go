@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"database/sql"
 	"flag"
 	"github.com/ungame/timetrack/app/handlers"
 	"github.com/ungame/timetrack/app/observer"
@@ -16,15 +17,26 @@ import (
 	"time"
 )
 
-var port int
+var (
+	port int
+	lite bool
+)
 
 func init() {
 	flag.IntVar(&port, "p", 15555, "set port")
+	flag.BoolVar(&lite, "l", true, "set true to run lite version")
 	flag.Parse()
 }
 
 func Run() {
-	conn := db.New()
+	var conn *sql.DB
+
+	if lite {
+		conn = db.Lite(db.DefaultFileStorage(), db.NewMigration(db.GetSqliteSeed()))
+	} else {
+		conn = db.New()
+	}
+
 	defer ioext.Close(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
