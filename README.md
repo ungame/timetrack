@@ -56,3 +56,25 @@ go run main.go list -n categories
 # example 2
 go run main.go list -n actvities
 ```
+
+- All:
+
+```bash
+-- Usage:
+
+     list  -n LIST_NAME -p PERIOD -o ORDER -l LIMIT
+              LIST_NAME (required): [categories, activities]
+              PERIOD (optional):    [today,yesterday,weekly,monthly]
+              ORDER  (optional):    [asc,desc]
+              LIMIT  (optional):    must be a number greater than 0
+
+     start -d DESCRIPTION -c CATEGORY_ID
+              DESCRIPTION (optional)
+              CATEGORY_ID (required): must be an existing category
+
+     finish -id ACTIVITY_ID
+                ACTIVITY_ID (required): must be an existing activity
+
+     delete -id ACTIVITY_ID
+                ACTIVITY_ID (required): must be an existing activity
+```

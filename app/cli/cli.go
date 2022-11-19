@@ -123,7 +123,10 @@ func (c *CommandLine) Usage() {
 	fmt.Println("              CATEGORY_ID (required): must be an existing category")
 	fmt.Println("")
 	fmt.Println("     finish -id ACTIVITY_ID")
-	fmt.Println("                ACTIVITY_ID (required)")
+	fmt.Println("                ACTIVITY_ID (required): must be an existing activity")
+	fmt.Println("")
+	fmt.Println("     delete -id ACTIVITY_ID")
+	fmt.Println("                ACTIVITY_ID (required): must be an existing activity")
 }
 
 func (c *CommandLine) List(name string, filter *types.PeriodFilter) {
