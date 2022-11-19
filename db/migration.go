@@ -2,7 +2,6 @@ package db
 
 import (
 	"database/sql"
-	"fmt"
 	"github.com/ungame/timetrack/ioext"
 	"io"
 	"log"
@@ -125,6 +124,5 @@ func convertToSqLiteQuery(query string) string {
 	query = strings.ReplaceAll(query, "AUTO_INCREMENT", "AUTOINCREMENT")
 	query = strings.ReplaceAll(query, "ENGINE = INNODB", "")
 	query = strings.ReplaceAll(query, "DEFAULT CHARSET = UTF8", "")
-	fmt.Println(query)
 	return query
 }

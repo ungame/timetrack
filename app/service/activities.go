@@ -3,11 +3,14 @@ package service
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"github.com/ungame/timetrack/app/models"
 	"github.com/ungame/timetrack/app/observer"
 	"github.com/ungame/timetrack/app/repository"
+	"github.com/ungame/timetrack/queries"
 	"github.com/ungame/timetrack/types"
 	"log"
+	"strings"
 	"time"
 )
 
@@ -15,6 +18,7 @@ type ActivitiesService interface {
 	StartActivity(ctx context.Context, activity *types.Activity) (*types.Activity, error)
 	GetActivity(ctx context.Context, id int64) (*types.Activity, error)
 	GetActivities(ctx context.Context) ([]*types.Activity, error)
+	FilterActivitiesByPeriod(ctx context.Context, filter *types.PeriodFilter) ([]*types.Activity, error)
 	FinishActivity(ctx context.Context, id int64) (*types.Activity, error)
 	UpdateActivity(ctx context.Context, activity *types.Activity) (*types.Activity, error)
 	DeleteActivity(ctx context.Context, id int64) error
@@ -105,6 +109,9 @@ func (s *activitiesService) FinishActivity(ctx context.Context, id int64) (*type
 	if err != nil {
 		return nil, err
 	}
+	if activity.Status == models.Finished {
+		return activity.Type(), nil
+	}
 	activity.Status = models.Finished
 	activity.SetFinishedAt(time.Now())
 	activity.SetUpdatedAt(time.Now())
@@ -149,6 +156,26 @@ func (s *activitiesService) UpdateActivity(ctx context.Context, activity *types.
 	}
 
 	return existing.Type(), nil
+}
+
+func (s *activitiesService) FilterActivitiesByPeriod(ctx context.Context, filter *types.PeriodFilter) ([]*types.Activity, error) {
+	period := queries.PeriodType(strings.TrimSpace(strings.ToLower(filter.PeriodName)))
+	if !period.IsValid() {
+		return nil, fmt.Errorf("invalid period filter: %s", filter.PeriodName)
+	}
+	order := queries.Order(strings.TrimSpace(strings.ToLower(filter.OrderBy)))
+	if !order.IsValid() {
+		return nil, fmt.Errorf("invalid order filter: %s", filter.OrderBy)
+	}
+	items, err := s.activitiesRepository.FilterByPeriod(ctx, period, order, filter.Limit)
+	if err != nil {
+		return nil, err
+	}
+	activities := make([]*types.Activity, 0, len(items))
+	for _, item := range items {
+		activities = append(activities, item.Type())
+	}
+	return activities, nil
 }
 
 func (s *activitiesService) DeleteActivity(ctx context.Context, id int64) error {

@@ -12,6 +12,8 @@ Simple time tracking in golang
 
 1. Up infra
 
+> You can run without infra with flag -lite=true
+
 ```bash
 cd infra/timetrack
 

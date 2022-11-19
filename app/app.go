@@ -56,6 +56,8 @@ func Run() {
 		activitiesHandler    = handlers.NewActivitiesHandler(activitiesService)
 	)
 
+	defer activitiesRepository.Close()
+
 	r := router.New(categoriesHandler, activitiesHandler)
 
 	log.Printf("Listening http://localhost:%d\n\n", port)

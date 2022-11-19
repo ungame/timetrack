@@ -10,11 +10,13 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 )
 
-func PrintActivity(a *types.Activity) {
+func (c *CommandLine) PrintActivity(a *types.Activity) {
 
-	category := GetCategory(a.CategoryID)
+	category := c.GetCategory(a.CategoryID)
 
 	fmt.Println("-- Activity")
 	fmt.Println("     ID:         ", a.ID)
@@ -34,7 +36,7 @@ func PrintActivity(a *types.Activity) {
 	fmt.Println("")
 }
 
-func CreateActivity(description string, category int64) {
+func (c *CommandLine) StartActivity(description string, category int64) {
 
 	input := &types.Activity{
 		CategoryID:  category,
@@ -47,7 +49,7 @@ func CreateActivity(description string, category int64) {
 		return
 	}
 
-	uri := fmt.Sprintf("%s/activities", baseURL)
+	uri := fmt.Sprintf("%s/activities", c.baseURL)
 
 	req, err := http.NewRequest(http.MethodPost, uri, bytes.NewBuffer(payload))
 	if err != nil {
@@ -76,12 +78,12 @@ func CreateActivity(description string, category int64) {
 		return
 	}
 
-	PrintActivity(&activity)
+	c.PrintActivity(&activity)
 }
 
-func ListActivities() {
+func (c *CommandLine) ListActivities() {
 
-	uri := fmt.Sprintf("%s/activities", baseURL)
+	uri := fmt.Sprintf("%s/activities", c.baseURL)
 
 	req, err := http.NewRequest(http.MethodGet, uri, nil)
 	if err != nil {
@@ -113,6 +115,136 @@ func ListActivities() {
 	}
 
 	for _, activity := range activities {
-		PrintActivity(activity)
+		c.PrintActivity(activity)
 	}
+}
+
+func (c *CommandLine) FilterActivities(filter *types.PeriodFilter) {
+
+	uri := fmt.Sprintf("%s/activities/_/filter", c.baseURL)
+
+	req, err := http.NewRequest(http.MethodGet, uri, nil)
+	if err != nil {
+		log.Println(err.Error())
+		return
+	}
+
+	query := url.Values{}
+	query.Set("period", filter.PeriodName)
+	query.Set("order", filter.OrderBy)
+	query.Set("limit", fmt.Sprint(filter.Limit))
+	req.URL.RawQuery = query.Encode()
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	if res != nil && res.Body != nil {
+		defer ioext.Close(res.Body)
+
+		if res.StatusCode >= http.StatusBadRequest {
+			d, err := httputil.DumpRequest(req, true)
+			if err != nil {
+				log.Panicln(err)
+			}
+			fmt.Println(string(d))
+			d, err = httputil.DumpResponse(res, true)
+			if err != nil {
+				log.Panicln(err)
+			}
+			fmt.Println(string(d))
+			return
+		}
+
+		body, err := io.ReadAll(res.Body)
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		}
+
+		var activities []*types.Activity
+		err = json.Unmarshal(body, &activities)
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		}
+
+		for _, activity := range activities {
+			c.PrintActivity(activity)
+		}
+	}
+}
+
+func (c *CommandLine) FinishActivity(id int64) {
+
+	uri := fmt.Sprintf("%s/activities/%d/finish", c.baseURL, id)
+
+	req, err := http.NewRequest(http.MethodPut, uri, nil)
+	if err != nil {
+		log.Println(err.Error())
+		return
+	}
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	if res != nil && res.Body != nil {
+		defer ioext.Close(res.Body)
+	}
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	var activity types.Activity
+	err = json.Unmarshal(body, &activity)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	c.PrintActivity(&activity)
+}
+
+func (c *CommandLine) DeleteActivity(id int64) {
+
+	uri := fmt.Sprintf("%s/activities/%d", c.baseURL, id)
+
+	req, err := http.NewRequest(http.MethodDelete, uri, nil)
+	if err != nil {
+		log.Println(err.Error())
+		return
+	}
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	if res != nil && res.Body != nil {
+		defer ioext.Close(res.Body)
+	}
+
+	if res.StatusCode != http.StatusNoContent {
+		if res.StatusCode >= http.StatusBadRequest {
+			d, err := httputil.DumpRequest(req, true)
+			if err != nil {
+				log.Panicln(err)
+			}
+			fmt.Println(string(d))
+			d, err = httputil.DumpResponse(res, true)
+			if err != nil {
+				log.Panicln(err)
+			}
+			fmt.Println(string(d))
+			return
+		}
+	}
+
+	fmt.Println("Activity deleted:", res.Header.Get("Entity"))
 }

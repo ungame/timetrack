@@ -24,8 +24,8 @@ func PrintCategory(c *types.Category) {
 	fmt.Println("")
 }
 
-func GetCategory(id int64) (category *types.Category) {
-	uri := fmt.Sprintf("%s/categories/%d", baseURL, id)
+func (c *CommandLine) GetCategory(id int64) (category *types.Category) {
+	uri := fmt.Sprintf("%s/categories/%d", c.baseURL, id)
 
 	req, err := http.NewRequest(http.MethodGet, uri, nil)
 	if err != nil {
@@ -58,8 +58,8 @@ func GetCategory(id int64) (category *types.Category) {
 	return
 }
 
-func ListCategories() {
-	uri := fmt.Sprintf("%s/categories", baseURL)
+func (c *CommandLine) ListCategories() {
+	uri := fmt.Sprintf("%s/categories", c.baseURL)
 
 	req, err := http.NewRequest(http.MethodGet, uri, nil)
 	if err != nil {

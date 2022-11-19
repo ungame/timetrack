@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"github.com/ungame/timetrack/app/models"
 	"github.com/ungame/timetrack/ioext"
 	"github.com/ungame/timetrack/queries"
@@ -21,8 +22,10 @@ type ActivitiesRepository interface {
 	Get(ctx context.Context, id int64) (*models.Activity, error)
 	GetAll(ctx context.Context) ([]*models.Activity, error)
 	GetByStatus(ctx context.Context, status models.ActivityStatus) ([]*models.Activity, error)
+	FilterByPeriod(ctx context.Context, period queries.Period, order queries.Order, limit int) ([]*models.Activity, error)
 	Update(ctx context.Context, activity *models.Activity) (*models.Activity, error)
 	Delete(ctx context.Context, id int64) (int64, error)
+	Truncate(ctx context.Context) error
 	Close()
 }
 
@@ -152,6 +155,42 @@ func (r *activitiesRepository) GetByStatus(ctx context.Context, status models.Ac
 		activities = append(activities, activity)
 	}
 	return activities, err
+}
+
+func (r *activitiesRepository) FilterByPeriod(ctx context.Context, period queries.Period, order queries.Order, limit int) ([]*models.Activity, error) {
+	var (
+		query      = "select * from activities where (started_at >= ? and started_at <= ?) order by id " + order.String() + " limit " + fmt.Sprint(limit)
+		start, end = period.Range(time.UTC)
+	)
+	rows, err := r.conn.QueryContext(ctx, query, start, end)
+	if err != nil {
+		return nil, err
+	}
+	defer ioext.Close(rows)
+	activities := make([]*models.Activity, 0, limit)
+	for rows.Next() {
+		activity := new(models.Activity)
+		err = rows.Scan(
+			&activity.ID,
+			&activity.CategoryID,
+			&activity.Description,
+			&activity.Status,
+			&activity.StartedAt,
+			&activity.UpdatedAt,
+			&activity.FinishedAt,
+		)
+		if err != nil {
+			return activities, err
+		}
+		activities = append(activities, activity)
+	}
+	return activities, err
+}
+
+func (r *activitiesRepository) Truncate(ctx context.Context) error {
+	query := "delete from activities"
+	_, err := r.conn.ExecContext(ctx, query)
+	return err
 }
 
 func (r *activitiesRepository) Close() {

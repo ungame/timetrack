@@ -6,6 +6,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/ungame/timetrack/app/service"
 	"github.com/ungame/timetrack/httpext"
+	"github.com/ungame/timetrack/queries"
 	"github.com/ungame/timetrack/types"
 	"io"
 	"net/http"
@@ -27,6 +28,7 @@ func (a *activitiesHandler) Register(router *mux.Router) {
 	router.Path("/activities/{id}").HandlerFunc(a.PutActivity).Methods(http.MethodPut)
 	router.Path("/activities/{id}").HandlerFunc(a.DeleteActivity).Methods(http.MethodDelete)
 	router.Path("/activities/{id}/finish").HandlerFunc(a.PutFinishActivity).Methods(http.MethodPut)
+	router.Path("/activities/_/filter").HandlerFunc(a.FilterActivities).Methods(http.MethodGet)
 }
 
 func (a *activitiesHandler) PostActivity(w http.ResponseWriter, r *http.Request) {
@@ -69,6 +71,45 @@ func (a *activitiesHandler) GetActivities(w http.ResponseWriter, r *http.Request
 	activities, err := a.activitiesService.GetActivities(r.Context())
 	if err != nil {
 		httpext.WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+	httpext.WriteJson(w, http.StatusOK, activities)
+}
+
+func (a *activitiesHandler) FilterActivities(w http.ResponseWriter, r *http.Request) {
+	var (
+		query  = r.URL.Query()
+		period = queries.Today.String()
+		order  = queries.Desc.String()
+		limit  = 1000
+		err    error
+	)
+
+	if query.Get("period") != "" {
+		period = query.Get("period")
+	}
+
+	if query.Get("order") != "" {
+		order = query.Get("order")
+	}
+
+	if query.Get("limit") != "" {
+		limit, err = strconv.Atoi(query.Get("limit"))
+		if err != nil {
+			httpext.WriteError(w, http.StatusBadRequest, err)
+			return
+		}
+	}
+
+	filter := &types.PeriodFilter{
+		PeriodName: period,
+		OrderBy:    order,
+		Limit:      limit,
+	}
+
+	activities, err := a.activitiesService.FilterActivitiesByPeriod(r.Context(), filter)
+	if err != nil {
+		httpext.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 	httpext.WriteJson(w, http.StatusOK, activities)
